@@ -1,10 +1,12 @@
 from apscheduler.schedulers.blocking import BlockingScheduler
-import logging
+import logging, re
 from datetime import datetime
-import praw
-import prawcore
-import re
+import praw, prawcore
+import requests, zipfile, io, os, shutil
+from bs4 import BeautifulSoup
 import config as cfg
+from google.cloud import vision
+from google.cloud.vision import types
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -29,10 +31,11 @@ chapters_info = {}
 
 
 def main():
-    read_chapters_file()
-    search_in_manga()
-    search_in_edens_zero()
-    sched.start()
+    scan_chapter('https://jaiminisbox.com/reader/read/eden-s-zero/en/0/2/page/1')
+    # read_chapters_file()
+    # search_in_manga()
+    # search_in_edens_zero()
+    # sched.start()
 
 
 @sched.scheduled_job('interval', seconds=600)
@@ -81,8 +84,20 @@ def get_chapter_number(title):
 
 
 def scan_chapter(link):
-    # TODO
-    pass
+    r = requests.get(link)
+    soup = BeautifulSoup(r.text, 'html.parser')
+    download_link = soup.select('div.icon_wrapper.fleft.larg')[0].find('a').attrs['href']
+    logger.debug('Download link - {}'.format(download_link))
+    r = requests.get(download_link)
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+        z.extractall(os.path.join(os.getcwd(), 'images'))
+    client = vision.ImageAnnotatorClient()
+    for filename in os.listdir(os.path.join(os.getcwd(), 'images')):
+        print(filename)
+        with io.open(os.path.join(os.getcwd(), 'images', filename), 'rb') as image_file:
+            content = image_file.read()
+        # image = types.Image(content=content)
+    # shutil.rmtree('./images')
 
 
 def post_comment(submission):

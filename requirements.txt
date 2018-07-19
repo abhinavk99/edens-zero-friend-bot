@@ -1,4 +1,6 @@
 APScheduler==3.5.1
 beautifulsoup4==4.6.0
+google-cloud-vision==0.33.0
 praw==5.4.0
 prawcore==0.14.0
+requests==2.18.4
