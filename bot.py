@@ -160,7 +160,7 @@ def post_comment(submission):
         submission.reply(reply_text)
     except praw.exceptions.APIException:
         logger.error(RATELIMITED)
-        sleep(550)
+        sleep(650)
         submission.reply(reply_text)
 
 
