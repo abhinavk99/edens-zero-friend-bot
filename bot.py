@@ -14,7 +14,7 @@ from base64 import b64encode
 from bs4 import BeautifulSoup
 import config as cfg
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 ENDPOINT_URL = 'https://vision.googleapis.com/v1/images:annotate'
@@ -63,7 +63,7 @@ def search_in_manga():
             if '[disc]' in title:
                 analyze_submission(submission, title)
     except prawcore.exceptions.ServerError:
-        print(SERVER_ERROR.format('manga'))
+        logger.error(SERVER_ERROR.format('manga'))
 
 
 @sched.scheduled_job('interval', seconds=600)
