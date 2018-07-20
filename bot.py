@@ -1,15 +1,22 @@
+import requests
+import zipfile
+import io
+import os
+import json
+import praw
+import prawcore
+import logging
+import re
 from apscheduler.schedulers.blocking import BlockingScheduler
-import logging, re
 from datetime import datetime
-import praw, prawcore
-import requests, zipfile, io, os, shutil
+from base64 import b64encode
 from bs4 import BeautifulSoup
 import config as cfg
-from google.cloud import vision
-from google.cloud.vision import types
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+ENDPOINT_URL = 'https://vision.googleapis.com/v1/images:annotate'
 
 TITLE_PREFIX = 'Submission Title - {}'
 LOG_MSG = "Checking for new Eden's Zero chapter in /r/{} at " + str(datetime.now())
@@ -19,11 +26,13 @@ GITHUB_LINK = 'https://github.com/abhinavk99/edens-zero-friend-bot'
 PM_LINK = 'https://www.reddit.com/message/compose/?to=edenszerofriendbot'
 FOOTER = '---\n^^[source]({}) ^^on ^^github, ^^[message]({}) ^^the ^^bot ^^for ^^any ^^questions'.format(GITHUB_LINK, PM_LINK)
 
-reddit = praw.Reddit(client_id=cfg.reddit_id,
-                     client_secret=cfg.reddit_secret,
-                     password=cfg.reddit_password,
-                     user_agent=cfg.reddit_user_agent,
-                     username=cfg.reddit_username)
+reddit = praw.Reddit(
+    client_id=cfg.reddit_id,
+    client_secret=cfg.reddit_secret,
+    password=cfg.reddit_password,
+    user_agent=cfg.reddit_user_agent,
+    username=cfg.reddit_username
+)
 
 sched = BlockingScheduler()
 
@@ -31,11 +40,10 @@ chapters_info = {}
 
 
 def main():
-    scan_chapter('https://jaiminisbox.com/reader/read/eden-s-zero/en/0/2/page/1')
-    # read_chapters_file()
-    # search_in_manga()
-    # search_in_edens_zero()
-    # sched.start()
+    read_chapters_file()
+    search_in_manga()
+    search_in_edens_zero()
+    sched.start()
 
 
 @sched.scheduled_job('interval', seconds=600)
@@ -68,7 +76,7 @@ def analyze_submission(submission, title):
     chapter_number = get_chapter_number(title)
     if chapter_number is not None and submission not in reddit.user.me().new(limit=5):
         logger.info(TITLE_PREFIX.format(submission.title))
-        scan_chapter(submission.url)
+        scan_chapter(submission.url, chapter_number)
         post_comment(submission)
         write_chapters_file()
 
@@ -83,7 +91,7 @@ def get_chapter_number(title):
     return None
 
 
-def scan_chapter(link):
+def scan_chapter(link, chapter_number):
     r = requests.get(link)
     soup = BeautifulSoup(r.text, 'html.parser')
     download_link = soup.select('div.icon_wrapper.fleft.larg')[0].find('a').attrs['href']
@@ -91,13 +99,37 @@ def scan_chapter(link):
     r = requests.get(download_link)
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         z.extractall(os.path.join(os.getcwd(), 'images'))
-    client = vision.ImageAnnotatorClient()
+    total_friends = 0
     for filename in os.listdir(os.path.join(os.getcwd(), 'images')):
-        print(filename)
-        with io.open(os.path.join(os.getcwd(), 'images', filename), 'rb') as image_file:
-            content = image_file.read()
-        # image = types.Image(content=content)
-    # shutil.rmtree('./images')
+        logger.debug(filename)
+        img_requests = []
+        with open(os.path.join(os.getcwd(), 'images', filename), 'rb') as image_file:
+            content = b64encode(image_file.read()).decode()
+            img_requests.append({
+                'image': {'content': content},
+                'features': [{
+                    'type': 'TEXT_DETECTION',
+                    'maxResults': 1
+                }]
+            })
+        img_requests_data = json.dumps({'requests': img_requests}).encode()
+        response = requests.post(
+            ENDPOINT_URL,
+            data=img_requests_data,
+            params={'key': cfg.google_api_key},
+            headers={'Content-Type': 'application/json'}
+        )
+        data = response.json()['responses'][0]
+        if 'fullTextAnnotation' in data:
+            text = data['fullTextAnnotation']['text'].lower()
+            logger.debug('Text for {}:\n{}'.format(filename, text))
+            friends = text.count('friend')
+            logger.debug(friends)
+            total_friends += friends
+        else:
+            logger.debug(data)
+    logger.info('Number of times the word friend appeared: {}'.format(total_friends))
+    chapters_info[chapter_number] = total_friends
 
 
 def post_comment(submission):
