@@ -81,10 +81,7 @@ def search_in_edens_zero():
 
 def analyze_submission(submission, title):
     chapter_number = get_chapter_number(title)
-    if chapter_number is not None:
-        for comment in reddit.user.me().new(limit=10):
-            if submission == comment.parent():
-                return
+    if chapter_number is not None and submission not in [comment.parent() for comment in reddit.user.me().new(limit=10)]:
         logger.info(TITLE_PREFIX.format(submission.title))
         if chapter_number not in chapters_info:
             download_chapter(submission.url, chapter_number)
