@@ -29,6 +29,9 @@ FRIEND_TEXT = 'Times "friend" was said in chapter {}: {} times.\n\n'
 TOTAL_FRIEND_TEXT = 'Total times "friend" was said: {} times in {} chapters.\n\n'
 AVERAGE_FRIEND_TEXT = 'Average "friends" per chapter: {}\n\n'
 
+CHAPTER_LINK = 'https://github.com/abhinavk99/edens-zero-friend-bot/blob/master/chapters.md'
+CHAPTERS_INFO = '[See the friend count for each chapter]({})\n\n'.format(CHAPTER_LINK)
+
 GITHUB_LINK = 'https://github.com/abhinavk99/edens-zero-friend-bot'
 PM_LINK = 'https://www.reddit.com/message/compose/?to=edenszerofriendbot'
 FOOTER = '---\n^^[source]({}) ^^on ^^github, ^^[message]({}) ^^the ^^bot ^^for ^^any ^^questions'.format(GITHUB_LINK, PM_LINK)
@@ -86,8 +89,8 @@ def analyze_submission(submission, title):
         if chapter_number not in chapters_info:
             download_chapter(submission.url, chapter_number)
             scan_chapter(chapter_number)
-        post_comment(submission)
-        write_chapters_file()
+        post_comment(submission, chapter_number)
+        write_chapters_file(chapter_number)
 
 
 def get_chapter_number(title):
@@ -143,17 +146,19 @@ def download_chapter(link, chapter_number):
         z.extractall(os.path.join(os.getcwd(), DIRECTORY, str(chapter_number)))
 
 
-def post_comment(submission):
+def post_comment(submission, chapter_number):
     reply_text = ''
     total_friends = 0
     num_chapters = 0
     for key in sorted(chapters_info.keys(), reverse=True):
         logger.debug('Chapter {}: {} times'.format(key, chapters_info[key]))
-        reply_text += FRIEND_TEXT.format(key, chapters_info[key])
+        if key == chapter_number:
+            reply_text += FRIEND_TEXT.format(key, chapters_info[key])
         total_friends += chapters_info[key]
         num_chapters += 1
     reply_text += TOTAL_FRIEND_TEXT.format(total_friends, num_chapters)
     reply_text += AVERAGE_FRIEND_TEXT.format(round(total_friends / num_chapters, 2))
+    reply_text += CHAPTERS_INFO
     reply_text += FOOTER
     logger.info(reply_text)
     try:
@@ -171,10 +176,12 @@ def read_chapters_file():
             chapters_info[int(tokens[0])] = int(tokens[1])
 
 
-def write_chapters_file():
+def write_chapters_file(chapter_number):
     with open('chapters.txt', 'w') as f:
         for key in sorted(chapters_info.keys()):
             f.write('{} {}\n'.format(key, chapters_info[key]))
+    with open('chapters.md', 'a') as f:
+        f.write('| {} | {} |\n'.format(chapter_number, chapters_info[chapter_number]))
 
 
 if __name__ == '__main__':
