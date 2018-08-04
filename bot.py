@@ -30,11 +30,11 @@ TOTAL_FRIEND_TEXT = 'Total times "friend" was said: {} times in {} chapters.\n\n
 AVERAGE_FRIEND_TEXT = 'Average "friends" per chapter: {}\n\n'
 
 CHAPTER_LINK = 'https://github.com/abhinavk99/edens-zero-friend-bot/blob/master/chapters.md'
-CHAPTERS_INFO = '[See the friend count for each chapter]({})\n\n'.format(CHAPTER_LINK)
+CHAPTERS_INFO = f'[See the friend count for each chapter]({CHAPTER_LINK})\n\n'
 
 GITHUB_LINK = 'https://github.com/abhinavk99/edens-zero-friend-bot'
 PM_LINK = 'https://www.reddit.com/message/compose/?to=edenszerofriendbot'
-FOOTER = '---\n^^[source]({}) ^^on ^^github, ^^[message]({}) ^^the ^^bot ^^for ^^any ^^questions'.format(GITHUB_LINK, PM_LINK)
+FOOTER = f'---\n^^[source]({GITHUB_LINK}) ^^on ^^github, ^^[message]({PM_LINK}) ^^the ^^bot ^^for ^^any ^^questions'
 
 reddit = praw.Reddit(
     client_id=cfg.reddit_id,
@@ -97,7 +97,7 @@ def get_chapter_number(title):
     match_obj = re.search(r'chapter (\d+)', title)
     if match_obj is not None:
         chapter_number = int(match_obj.groups()[0])
-        logger.debug('Chapter {}'.format(chapter_number))
+        logger.debug(f'Chapter {chapter_number}')
         return chapter_number
     return None
 
@@ -126,13 +126,13 @@ def scan_chapter(chapter_number):
         data = response.json()['responses'][0]
         if 'fullTextAnnotation' in data:
             text = data['fullTextAnnotation']['text'].lower()
-            logger.debug('Text for {}:\n{}'.format(filename, text))
+            logger.debug(f'Text for {filename}:\n{text}')
             friends = text.count('friend')
             logger.debug(friends)
             total_friends += friends
         else:
             logger.debug(data)
-    logger.info('Number of times the word friend appeared: {}'.format(total_friends))
+    logger.info(f'Number of times the word friend appeared: {total_friends}')
     chapters_info[chapter_number] = total_friends
 
 
@@ -140,7 +140,7 @@ def download_chapter(link, chapter_number):
     r = requests.get(link)
     soup = BeautifulSoup(r.text, 'html.parser')
     download_link = soup.select('div.icon_wrapper.fleft.larg')[0].find('a').attrs['href']
-    logger.debug('Download link - {}'.format(download_link))
+    logger.debug(f'Download link - {download_link}')
     r = requests.get(download_link)
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
         z.extractall(os.path.join(os.getcwd(), DIRECTORY, str(chapter_number)))
@@ -151,7 +151,7 @@ def post_comment(submission, chapter_number):
     total_friends = 0
     num_chapters = 0
     for key in sorted(chapters_info.keys(), reverse=True):
-        logger.debug('Chapter {}: {} times'.format(key, chapters_info[key]))
+        logger.debug(f'Chapter {key}: {chapters_info[key]} times')
         if key == chapter_number:
             reply_text += FRIEND_TEXT.format(key, chapters_info[key])
         total_friends += chapters_info[key]
@@ -179,9 +179,9 @@ def read_chapters_file():
 def write_chapters_file(chapter_number):
     with open('chapters.txt', 'w') as f:
         for key in sorted(chapters_info.keys()):
-            f.write('{} {}\n'.format(key, chapters_info[key]))
+            f.write(f'{key} {chapters_info[key]}\n')
     with open('chapters.md', 'a') as f:
-        f.write('| {} | {} |\n'.format(chapter_number, chapters_info[chapter_number]))
+        f.write(f'| {chapter_number} | {chapters_info[chapter_number]} |\n')
 
 
 if __name__ == '__main__':
