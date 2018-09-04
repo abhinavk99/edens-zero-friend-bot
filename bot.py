@@ -76,7 +76,7 @@ def search_in_edens_zero():
         for submission in reddit.subreddit('EdensZero').search("Chapter", sort='new', time_filter='day'):
             logger.debug(TITLE_PREFIX.format(submission.title))
             title = submission.title.lower()
-            if 'links + discussion' in title:
+            if 'discussion' in title:
                 analyze_submission(submission, title)
     except prawcore.exceptions.ServerError:
         logger.error(SERVER_ERROR.format('EdensZero'))
