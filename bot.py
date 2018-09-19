@@ -21,7 +21,8 @@ ENDPOINT_URL = 'https://vision.googleapis.com/v1/images:annotate'
 DIRECTORY = 'images'
 
 TITLE_PREFIX = 'Submission Title - {}'
-LOG_MSG = "Checking for new Eden's Zero chapter in /r/{} at " + str(datetime.now())
+LOG_MSG = "Checking for new Eden's Zero chapter in /r/{} at " + \
+    str(datetime.now())
 SERVER_ERROR = "Error with searching for a new Eden's Zero chapter in /r/{}"
 RATELIMITED = 'Got ratelimited. Trying again in 9 minutes.'
 
@@ -94,7 +95,10 @@ def analyze_submission(submission, title):
 
 
 def get_chapter_number(title):
-    match_obj = re.search(r'chapter (\d+)', title)
+    # Try two possible regex patterns to get the chapter number
+    match_obj = re.search(r'chapter\s(\d+)', title)
+    if match_obj is None:
+        match_obj = re.search(r'ch\.?\s?(\d+)', title)
     if match_obj is not None:
         chapter_number = int(match_obj.groups()[0])
         logger.debug(f'Chapter {chapter_number}')
@@ -139,7 +143,8 @@ def scan_chapter(chapter_number):
 def download_chapter(link, chapter_number):
     r = requests.get(link)
     soup = BeautifulSoup(r.text, 'html.parser')
-    download_link = soup.select('div.icon_wrapper.fleft.larg')[0].find('a').attrs['href']
+    download_link = soup.select('div.icon_wrapper.fleft.larg')[
+        0].find('a').attrs['href']
     logger.debug(f'Download link - {download_link}')
     r = requests.get(download_link)
     with zipfile.ZipFile(io.BytesIO(r.content)) as z:
@@ -157,7 +162,8 @@ def post_comment(submission, chapter_number):
         total_friends += chapters_info[key]
         num_chapters += 1
     reply_text += TOTAL_FRIEND_TEXT.format(total_friends, num_chapters)
-    reply_text += AVERAGE_FRIEND_TEXT.format(round(total_friends / num_chapters, 2))
+    reply_text += AVERAGE_FRIEND_TEXT.format(
+        round(total_friends / num_chapters, 2))
     reply_text += CHAPTERS_INFO
     reply_text += FOOTER
     logger.info(reply_text)
