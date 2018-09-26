@@ -186,9 +186,9 @@ def write_chapters_file(chapter_number):
     with open('chapters.txt', 'w') as f:
         for key in sorted(chapters_info.keys()):
             f.write(f'{key} {chapters_info[key]}\n')
-    with open('chapters.md', 'a') as f:
+    with open('chapters.md', 'a+') as f:
         chapter_markdown = f'| {chapter_number} | {chapters_info[chapter_number]} |\n'
-        if not f.read().find(chapter_markdown):
+        if f.read().find(chapter_markdown) == -1:
             f.write(chapter_markdown)
 
 
